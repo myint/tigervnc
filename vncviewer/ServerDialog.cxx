@@ -28,7 +28,7 @@
 #include <FL/fl_draw.H>
 #include <FL/fl_ask.H>
 #include <FL/Fl_Box.H>
-#include <FL/Fl_File_Chooser.H>
+#include <FL/Fl_Native_File_Chooser.H>
 
 #include "ServerDialog.h"
 #include "OptionsDialog.h"
@@ -131,26 +131,27 @@ void ServerDialog::handleOptions(Fl_Widget *widget, void *data)
 }
 
 
+static const char *const filename_filter =
+  "TigerVNC configuration\t*.tigervnc";
+
+
 void ServerDialog::handleLoad(Fl_Widget *widget, void *data)
 {
   ServerDialog *dialog = (ServerDialog*)data;
-  Fl_File_Chooser* file_chooser = new Fl_File_Chooser("", "TigerVNC configuration (*.tigervnc)", 
-						      0, "Select a TigerVNC configuration file");
-  file_chooser->preview(0);
-  file_chooser->previewButton->hide();
+  Fl_Native_File_Chooser* file_chooser =
+    new Fl_Native_File_Chooser(Fl_Native_File_Chooser::BROWSE_FILE);
+  file_chooser->filter(filename_filter);
+  file_chooser->title("Select a TigerVNC configuration file");
+
   file_chooser->show();
-  
-  // Block until user picks something.
-  while(file_chooser->shown())
-    Fl::wait();
-  
+
+  const char *const filename = strdup(file_chooser->filename());
+
   // Did the user hit cancel?
-  if (file_chooser->value() == NULL) {
-    delete(file_chooser);
+  if (filename[0] == '\0') {
+    delete file_chooser;
     return;
   }
-  
-  const char* filename = strdup(file_chooser->value());
 
   try {
     dialog->serverName->value(loadViewerParameters(filename));
@@ -158,62 +159,38 @@ void ServerDialog::handleLoad(Fl_Widget *widget, void *data)
     fl_alert("%s", e.str());
   }
 
-  delete(file_chooser);
+  delete file_chooser;
 }
 
 
 void ServerDialog::handleSaveAs(Fl_Widget *widget, void *data)
-{ 
+{
   ServerDialog *dialog = (ServerDialog*)data;
   const char* servername = strdup(dialog->serverName->value());
-  char* filename;
 
-  Fl_File_Chooser* file_chooser = new Fl_File_Chooser("", "TigerVNC configuration (*.tigervnc)", 
-						      2, "Save the TigerVNC configuration to file");
-  
-  file_chooser->preview(0);
-  file_chooser->previewButton->hide();
+  Fl_Native_File_Chooser* file_chooser =
+    new Fl_Native_File_Chooser(Fl_Native_File_Chooser::BROWSE_SAVE_FILE);
+  file_chooser->filter(filename_filter);
+  file_chooser->title("Save the TigerVNC configuration to file");
+  file_chooser->options(Fl_Native_File_Chooser::SAVEAS_CONFIRM);
+
   file_chooser->show();
-  
-  while(1) {
-    
-    // Block until user picks something.
-    while(file_chooser->shown())
-      Fl::wait();
-    
-    // Did the user hit cancel?
-    if (file_chooser->value() == NULL) {
-      delete(file_chooser);
-      return;
-    }
-    
-    filename = strdup(file_chooser->value());
-    
-    FILE* f = fopen(filename, "r");
-    if (f) {
 
-      // The file already exists.
-      fclose(f);
-      int overwrite_choice = fl_choice("%s already exists. Do you want to overwrite?", 
-				       "Overwrite", "No", NULL, filename);
-      if (overwrite_choice == 1) {
+  const char *const filename = strdup(file_chooser->filename());
 
-	// If the user doesn't want to overwrite:
-	file_chooser->show();
-	continue;
-      }
-    }
-
-    break;
+  // Did the user hit cancel?
+  if (filename[0] == '\0') {
+    delete file_chooser;
+    return;
   }
-  
+
   try {
     saveViewerParameters(filename, servername);
   } catch (rfb::Exception& e) {
     fl_alert("%s", e.str());
   }
-  
-  delete(file_chooser);
+
+  delete file_chooser;
 }
 
 
