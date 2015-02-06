@@ -581,12 +581,13 @@ char* loadViewerParameters(const char *filename) {
              filepath, strerror(errno));
     throw Exception(readError);
   }
-  
+
   int lineNr = 0;
   while (!feof(f)) {
 
     // Read the next line
     lineNr++;
+    memset(line, '\0', sizeof(line));
     if (!fgets(line, sizeof(line), f)) {
       if (line[sizeof(line) -1] != '\0') {
         snprintf(readError, sizeof(readError),
